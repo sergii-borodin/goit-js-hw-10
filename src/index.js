@@ -1,43 +1,48 @@
-import { fetchCountries } from './fetchCountries';
-
 import './css/styles.css';
+import { fetchCountries } from './fetchCountries';
+import { refs } from './helpers/refs';
+import { renderCountryList, renderCountryCard } from './helpers/renderMarkup';
+import debounce from 'lodash.debounce';
+import { Notify } from 'notiflix';
+
 
 const DEBOUNCE_DELAY = 300;
 
-const countryNameInput = document.querySelector('#search-box');
-const countryList = document.querySelector('.country-list');
-const countryInfo = document.querySelector('.country-info');
-
-countryNameInput.addEventListener('input', OnInputChange);
+refs.countryNameInput.addEventListener('input', debounce(OnInputChange, DEBOUNCE_DELAY));
 
 function OnInputChange(e) {
-    const countryNameInputValue = e.target.value;
-    fetchCountries(countryNameInputValue).then((countries) => renderCountryList(countries).catch((error) => console.log(error)));
-}
+    const inputValue = e.target.value.trim();
+    console.log('inputValue', inputValue);
+    if (!inputValue) {
+        refs.countryCard.innerHTML = '';
+        refs.countryList.innerHTML = '';
+        return;
+    }
 
-function renderCountryList(countries) {
-    console.log(countries);
-
-    // Markup rendering in a case when backend sends array of countries
-    if (countries.length === 1) {
-        const [country] = countries;
-  const {name, flags, capital, population, languages} = country;
-            const listMarkup = `<p><img src=${flags.png} alt="Flag of ${name}" width='20'> ${name}</p>
-        <p><b>Capital</b>: ${capital}</p>
-        <p><b>Population</b>: ${population}</p>
-        <p><b>Languages</b>: ${languages.map(language => `${language.name}`).join(",")}</p>`;
-        countryList.innerHTML = '';
-      countryInfo.innerHTML = listMarkup;
-}
-    // Markup rendering in a case when backend sends array with one single country
-    else if (countries.length > 1) {
-            const detailMarkup = countries.map(({name, flags}) =>
-            `<li class='countryListItem'><img class='flagImage' src=${flags.png} alt="Flag of ${name}" width='20'><p>${name}</p></li>`
-        )
-        .join("");
-        
-    countryInfo.innerHTML = '';
-    countryList.innerHTML = detailMarkup;
+    fetchCountries(inputValue).then((countries) => {
+        console.log('countries', countries)
+        if (countries.length > 10) {
+            refs.countryCard.innerHTML = '';
+            refs.countryList.innerHTML = '';
+            Notify.info("Too many matches found. Please enter a more specific name.")
         }
-}
+        if (countries.length >= 2 && countries.length <= 10) {
+            refs.countryCard.innerHTML = '';
+            refs.countryList.innerHTML = '';
+            renderCountryList(countries);
+        }
+        if (countries.length === 1) {
+            refs.countryList.innerHTML = '';
+            renderCountryCard(countries);
+        }
+    }).catch((error) => {
+        refs.countryCard.innerHTML = '';
+        refs.countryList.innerHTML = '';
+        Notify.failure(`Oops, there is no country with that name ${error}`)
+    });
+    }
+
+
+
+
   
